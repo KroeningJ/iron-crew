@@ -11,49 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB3WdGX6qTECRTuNCAdeJqYsfJfcZyFKQE",
-  authDomain: "iron-crew.firebaseapp.com",
-  projectId: "iron-crew",
-  storageBucket: "iron-crew.firebasestorage.app",
-  messagingSenderId: "542495313",
-  appId: "1:542495313:web:22ca67b4e1aa0338ff5e70"
-};
-
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
-
-// ── make db & firebase functions available globally ──
-window.db = db;
-window.fsCollection = collection;
-window.fsDoc = doc;
-window.fsSetDoc = setDoc;
-window.fsAddDoc = addDoc;
-window.fsOnSnapshot = onSnapshot;
-
-// ── listen to users collection ──
-onSnapshot(collection(db, 'users'), (snap) => {
-  S.users = snap.docs.map(d => d.data());
-  if(!S.users.length) return;
-  if(!S.users.find(u=>u.name===S.au)) S.au = S.users[0].name;
-  if(!S.users.find(u=>u.name===S.hu)) S.hu = S.users[0].name;
-  const tab = document.querySelector('.section.active')?.id?.replace('tab-','');
-  if(tab) ({log:rLog,rank:rRank,hist:rHist,prof:rProf})[tab]?.();
-  updateLandingStats();
-});
-
-// ── listen to workouts collection ──
-onSnapshot(collection(db, 'workouts'), (snap) => {
-  S.ws = snap.docs.map(d => ({id: d.id, ...d.data()}));
-  const tab = document.querySelector('.section.active')?.id?.replace('tab-','');
-  if(tab) ({log:rLog,rank:rRank,hist:rHist,prof:rProf})[tab]?.();
-  updateLandingStats();
-});
-</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -398,7 +356,23 @@ html { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
   </div>
 </div>
 
-<script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB3WdGX6qTECRTuNCAdeJqYsfJfcZyFKQE",
+  authDomain: "iron-crew.firebaseapp.com",
+  projectId: "iron-crew",
+  storageBucket: "iron-crew.firebasestorage.app",
+  messagingSenderId: "542495313",
+  appId: "1:542495313:web:22ca67b4e1aa0338ff5e70"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+
 const EX=['Klimmzüge','Pushups','Kniebeugen'];
 const EICO=['ti-arrow-up','ti-hand-stop','ti-circle'];
 const COLS=[
@@ -461,11 +435,10 @@ function fchips(id,active,fn,noAlle=false){const opts=noAlle?EX:['Alle',...EX];d
 function rLog(){
   uchips('lu',S.au,'sLU');
   document.getElementById('ef').innerHTML=EX.map((ex,i)=>{
-    const lw=[...S.ws].reverse().find(w=>w.u===S.au&&w.r[ex]);
     return `<div class="exrow">
       <div class="exicon"><i class="ti ${EICO[i]}"></i></div>
       <div class="exname">${ex}</div>
-      <input class="repin" type="number" id="r-${ex}" min="0" max="9999" placeholder="0" value="${lw?lw.r[ex]:''}">
+      <input class="repin" type="number" id="r-${ex}" min="0" max="9999" placeholder="0" value="">
       <span style="font-size:10px;color:var(--muted);">WDH.</span>
     </div>`;
   }).join('');
@@ -482,7 +455,7 @@ function saveW(){
   EX.forEach(ex=>{const v=parseInt(document.getElementById('r-'+ex).value)||0;if(v>0){r[ex]=v;any=true;}});
   if(!any){document.getElementById('lfb').textContent='>> KEINE DATEN EINGEGEBEN!';return;}
   // save to Firestore
-  window.fsAddDoc(window.fsCollection(window.db, 'workouts'), {u:S.au, d:tod(), r});
+  addDoc(collection(db, 'workouts'), {u:S.au, d:tod(), r});
 
   // build summary
   const lines=EX.filter(ex=>r[ex]).map(ex=>{
@@ -509,6 +482,8 @@ function saveW(){
       ${lines}
     </div>`;
   setTimeout(()=>{fb.innerHTML='';},6000);
+  // reset all inputs to empty
+  EX.forEach(ex=>{ const el=document.getElementById('r-'+ex); if(el) el.value=''; });
   rLog();
 }
 
@@ -551,9 +526,15 @@ function rHist(){
   if(!ws.length){el.innerHTML='<div class="empty">>> KEINE EINTRÄGE</div>';return;}
   el.innerHTML=[...ws].reverse().map(w=>{
     const exl=ex==='Alle'?EX.filter(e=>w.r[e]):(w.r[ex]?[ex]:[]);
-    return `<div class="hitem"><div class="hdate">>> ${fmt(w.d)}</div><div class="epills">${exl.map(e=>{
-      return `<span class="epill">${e}: ${w.r[e]}</span>`;
-    }).join('')}</div></div>`;
+    return `<div class="hitem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div class="hdate" style="margin-bottom:0;">>> ${fmt(w.d)}</div>
+        <button onclick="deleteW('${w.id}')" style="border:1px solid #ff2244;background:transparent;color:#ff2244;font-family:'Share Tech Mono',monospace;font-size:10px;padding:3px 8px;cursor:pointer;letter-spacing:1px;">✕ DEL</button>
+      </div>
+      <div class="epills">${exl.map(e=>{
+        return `<span class="epill">${e}: ${w.r[e]}</span>`;
+      }).join('')}</div>
+    </div>`;
   }).join('');
 }
 
@@ -580,7 +561,8 @@ function rProf(){
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1a1a2a;">
       <div class="av" style="background:${c.bg};border-color:${c.br};color:${c.tx}">${ini(u.name)}</div>
       <span style="flex:1;font-family:'Orbitron',monospace;font-size:11px;letter-spacing:1px;color:${c.tx}">${u.name.toUpperCase()}</span>
-      <span style="font-size:10px;color:var(--muted);letter-spacing:1px;">${S.ws.filter(w=>w.u===u.name).length} KÄMPFE</span>
+      <span style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-right:8px;">${S.ws.filter(w=>w.u===u.name).length} KÄMPFE</span>
+      <button onclick="deleteU('${u.name}')" style="border:1px solid var(--red);background:transparent;color:var(--red);font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px 10px;cursor:pointer;letter-spacing:1px;">✕</button>
     </div>`;
   }).join('');
 }
@@ -589,8 +571,20 @@ function addU(){
   const n=document.getElementById('nn').value.trim();
   if(!n||S.users.find(u=>u.name===n))return;
   const c=S.users.length;
-  window.fsSetDoc(window.fsDoc(window.db,'users',n), {name:n, c});
+  setDoc(doc(db,'users',n), {name:n, c});
   document.getElementById('nn').value='';
+}
+
+function deleteU(name){
+  if(!confirm('Kämpfer "'+name+'" wirklich löschen?')) return;
+  deleteDoc(doc(db,'users',name));
+  if(S.au===name) S.au = S.users.find(u=>u.name!==name)?.name||'';
+  if(S.hu===name) S.hu = S.users.find(u=>u.name!==name)?.name||'';
+}
+
+function deleteW(id){
+  if(!confirm('Training wirklich löschen?')) return;
+  deleteDoc(doc(db,'workouts',id));
 }
 
 function backToLanding(){
@@ -610,6 +604,43 @@ style.textContent="@keyframes fadeInLand{from{opacity:0;}to{opacity:1;}}";
 document.head.appendChild(style);
 
 updateLandingStats();
+
+
+// expose functions globally for onclick handlers
+window.enterApp = enterApp;
+window.backToLanding = backToLanding;
+window.showTab = showTab;
+window.saveW = saveW;
+window.addU = addU;
+window.deleteU = deleteU;
+window.sLU = sLU;
+window.sHU = sHU;
+window.sRE = sRE;
+window.sHE = sHE;
+window.rLog = rLog;
+window.rRank = rRank;
+window.rHist = rHist;
+window.rProf = rProf;
+window.updateLandingStats = updateLandingStats;
+
+// ── listen to users collection ──
+onSnapshot(collection(db, 'users'), (snap) => {
+  S.users = snap.docs.map(d => d.data());
+  if(!S.users.length) return;
+  if(!S.users.find(u=>u.name===S.au)) S.au = S.users[0].name;
+  if(!S.users.find(u=>u.name===S.hu)) S.hu = S.users[0].name;
+  const tab = document.querySelector('.section.active')?.id?.replace('tab-','');
+  if(tab) ({log:rLog,rank:rRank,hist:rHist,prof:rProf})[tab]?.();
+  updateLandingStats();
+});
+
+// ── listen to workouts collection ──
+onSnapshot(collection(db, 'workouts'), (snap) => {
+  S.ws = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  const tab = document.querySelector('.section.active')?.id?.replace('tab-','');
+  if(tab) ({log:rLog,rank:rRank,hist:rHist,prof:rProf})[tab]?.();
+  updateLandingStats();
+});
 </script>
 </body>
 </html>
