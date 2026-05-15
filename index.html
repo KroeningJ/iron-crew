@@ -278,7 +278,7 @@ html { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
     <div class="land-eyebrow">Calisthenics Battle Tracker</div>
 
     <div class="land-logo">IRON<br>CREW</div>
-    <div class="land-sub">Season 01 &nbsp;·&nbsp; 2026</div>
+    <div class="land-sub">Season 01 &nbsp;·&nbsp; 2025</div>
 
     <div class="land-deco" style="justify-content:center;">
       <div class="deco-stat">
@@ -295,6 +295,10 @@ html { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
       <div style="text-align:center;border:1px solid #2a2a3a;padding:10px 16px;min-width:70px;">
         <div style="font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--orange);">200</div>
         <div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:3px;">PUSHUPS</div>
+      </div>
+      <div style="text-align:center;border:1px solid #2a2a3a;padding:10px 16px;min-width:70px;">
+        <div style="font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--orange);">100</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:3px;">DIPS</div>
       </div>
       <div style="text-align:center;border:1px solid #2a2a3a;padding:10px 16px;min-width:70px;">
         <div style="font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--orange);">300</div>
@@ -373,8 +377,8 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
-const EX=['Klimmzüge','Pushups','Kniebeugen'];
-const EICO=['ti-arrow-up','ti-hand-stop','ti-circle'];
+const EX=['Klimmzüge','Pushups','Dips','Kniebeugen'];
+const EICO=['ti-arrow-up','ti-hand-stop','ti-arrow-down','ti-circle'];
 const COLS=[
   {bg:'#001a33',br:'#00aaff',tx:'#00aaff'},
   {bg:'#1a0030',br:'#cc44ff',tx:'#cc44ff'},
@@ -448,7 +452,7 @@ function sHU(n){S.hu=n;rHist();}
 function sRE(e){S.rex=e;rRank();}
 function sHE(e){S.hex=e;rHist();}
 
-const GOALS={Klimmzüge:100,Pushups:200,Kniebeugen:300};
+const GOALS={Klimmzüge:100,Pushups:200,Dips:100,Kniebeugen:300};
 
 function saveW(){
   const r={};let any=false;
